@@ -21,9 +21,17 @@ class APIError(StandardError):
 
 
 def encode_params(**kw):
-    """URL-encode paramteres"""
+    """Return a URL-encoded string for a dictionary of paramteres."""
     return "&".join(["%s=%s" % (k, urllib.quote(str(v).encode("utf-8")))
                      for k, v in kw.iteritems()])
+
+
+def decompress_gzip(compressed_str):
+    """Decompress a string compressed by Gzip."""
+    gzipper = gzip.GzipFile(fileobj=StringIO(compressed_str))
+    decompressed_str = gzipper.read()
+    gzipper.close()
+    return decompressed_str
 
 
 def http_post(url, **kw):
@@ -31,12 +39,10 @@ def http_post(url, **kw):
     req = urllib2.Request(url, data=encode_params(**kw))
     req.add_header("Accept-Encoding", "gzip")
     resp = urllib2.urlopen(req)
-    body = resp.read()
+    content = resp.read()
     if resp.headers.get("Content-Encoding", "") == "gzip":
-        gzipper = gzip.GzipFile(fileobj=StringIO(body))
-        body = gzipper.read()
-        gzipper.close()
-    result = json.loads(body)
+        content = decompress_gzip(content)
+    result = json.loads(content)
     if type(result) is not list and result.get("error_code"):
         raise APIError(result["error_code"], result["error_msg"])
     return result
@@ -123,4 +129,5 @@ class APIWrapper:
                           v=APIClient.API_VERSION)
             params["format"] = "JSON"
             return http_post(APIClient.API_SERVER, **params)
+
         return request

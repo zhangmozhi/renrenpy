@@ -113,7 +113,7 @@ class APIClient:
 
 
 class APIWrapper:
-    """A wrapper for APIs."""
+    """A wrapper class for APIs."""
     def __init__(self, client, name):
         self.client = client
         self.name = name

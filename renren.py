@@ -1,5 +1,7 @@
 """Python client SDK for Renren API using OAuth 2."""
 
+#TODO: Add upload support.
+
 __author__ = "Mozhi Zhang (zhangmozhi@gmail.com)"
 
 import json
@@ -100,12 +102,25 @@ class APIClient:
         self.access_token = str(access_token)
         self.expires = float(expires)
 
-    def request(self, method, **kw):
-        """Send a HTTP Post request to the given API method and return the 
-        JSON object.
-        """
-        params = dict(kw, access_token=self.access_token, method=method,
-                      call_id=str(int(time.time() * 1000)),
-                      v=APIClient.API_VERSION)
-        params["format"] = "JSON"
-        return http_post(APIClient.API_SERVER, **params)
+    def __getattr__(self, attr):
+        return APIWrapper(self, attr)
+
+
+class APIWrapper:
+    """A wrapper for APIs."""
+    def __init__(self, client, name):
+        self.client = client
+        self.name = name
+
+    def __getattr__(self, attr):
+        def request(**kw):
+            """Send a HTTP Post request to the API server with specified 
+            method.
+            """
+            params = dict(kw, access_token=self.client.access_token,
+                          method="%s.%s" % (self.name, attr),
+                          call_id=str(int(time.time() * 1000)),
+                          v=APIClient.API_VERSION)
+            params["format"] = "JSON"
+            return http_post(APIClient.API_SERVER, **params)
+        return request

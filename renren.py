@@ -1,5 +1,7 @@
 """Python client SDK for Renren API using OAuth 2."""
 
+__author__ = "Mozhi Zhang (zhangmozhi@gmail.com)"
+
 import json
 import time
 import urllib

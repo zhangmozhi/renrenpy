@@ -185,7 +185,8 @@ class APIWrapper:
                           method="%s.%s" % (self.name, attr),
                           call_id=str(int(time.time() * 1000)),
                           v=APIClient.API_VERSION)
-            params["format"] = "JSON"
+            if not params.get("format"):
+                params["format"] = "JSON"
             return http_post(APIClient.API_SERVER, **params)
 
         return request

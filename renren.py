@@ -1,7 +1,5 @@
 """Python client SDK for Renren API using OAuth 2."""
 
-#TODO: Add upload support.
-
 __author__ = "Mozhi Zhang (zhangmozhi@gmail.com)"
 
 import json
@@ -16,13 +14,24 @@ class APIError(StandardError):
         self.code = code
         StandardError.__init__(self, message)
 
+    def __unicode__(self):
+        return u"APIError: %s: %s" % (self.code, self.message)
+
     def __str__(self):
-        return "APIError: %s: %s" % (self.code, self.message)
+        return unicode(self).encode("utf-8")
+                                                 
+
+
+def encode_str(obj):
+    """Encode an object into a utf-8 string."""
+    if isinstance(obj, basestring):
+        return obj.encode("utf-8") if isinstance(obj, unicode) else obj
+    return str(obj)
 
 
 def encode_params(**kw):
     """Return a URL-encoded string for a dictionary of paramteres."""
-    return "&".join(["%s=%s" % (k, urllib.quote(str(v).encode("utf-8")))
+    return "&".join(["%s=%s" % (k, urllib.quote(encode_str(v)))
                      for k, v in kw.iteritems()])
 
 
@@ -34,17 +43,48 @@ def decompress_gzip(compressed_str):
     return decompressed_str
 
 
+def encode_multipart(**kw):
+    """Return a multipart/form-data body with a randomly generated boundary.
+    """
+    boundary = "----------%s" % hex(int(time.time() * 1000))
+    body = ""
+    for k, v in kw.iteritems():
+        body += "--%s\r\n" % boundary
+        if hasattr(v, "read"):
+            body += "Content-Disposition: form-data; name=\"%s\";\
+                    filename=\"hidden\"\r\n\
+                    Content-Type: application/octet-stream\r\n\r\n\
+                    %s" % (k, v.read())
+        else:
+            body += "Content-Disposition: form-data; name=\"%s\"\r\n\r\n\
+                    %s" % (k, encode_str(v))
+    body += "--%s--\r\n" % boundary
+    return body, boundary
+
+
 def http_post(url, **kw):
     """Send a HTTP Post request to the url and return a JSON object."""
-    req = urllib2.Request(url, data=encode_params(**kw))
+    params = None
+    boundary = None
+    if url.find("upload") >= 0:
+        params, boundary = encode_multipart(**kw)
+    else:
+        params = encode_params(**kw)
+
+    req = urllib2.Request(url, data=params)
     req.add_header("Accept-Encoding", "gzip")
+    if boundary:
+        req.add_header("Content-Type",
+                       "multipart/form-data; boundary=%s" % boundary)
+
     resp = urllib2.urlopen(req)
     content = resp.read()
     if resp.headers.get("Content-Encoding", "") == "gzip":
         content = decompress_gzip(content)
     result = json.loads(content)
     if type(result) is not list and result.get("error_code"):
-        raise APIError(result["error_code"], result["error_msg"])
+        raise APIError(result.get("error_code", ""),
+                       result.get("error_msg", ""))
     return result
 
 

@@ -19,7 +19,6 @@ class APIError(StandardError):
 
     def __str__(self):
         return unicode(self).encode("utf-8")
-                                                 
 
 
 def encode_str(obj):
@@ -43,30 +42,49 @@ def decompress_gzip(compressed_str):
     return decompressed_str
 
 
+def guess_content_type(name):
+    """Return the content type by the extension of the filename."""
+    if name.endswith(".jpg"):
+        return "image/jpg"
+    elif name.endswith(".jpeg"):
+        return "image/jpeg"
+    elif name.endswith(".png"):
+        return "image/png"
+    elif name.endswith(".gif"):
+        return "image/gif"
+    elif name.endswith(".bmp"):
+        return "image.bmp"
+    return "image/jpg"
+
+
 def encode_multipart(**kw):
     """Return a multipart/form-data body with a randomly generated boundary.
     """
     boundary = "----------%s" % hex(int(time.time() * 1000))
-    body = ""
+    params = []
     for k, v in kw.iteritems():
-        body += "--%s\r\n" % boundary
+        params.append("--%s" % boundary)
         if hasattr(v, "read"):
-            body += "Content-Disposition: form-data; name=\"%s\";\
-                    filename=\"hidden\"\r\n\
-                    Content-Type: application/octet-stream\r\n\r\n\
-                    %s" % (k, v.read())
+            content = v.read()
+            filename = v.name
+            params.append("Content-Disposition: form-data; name=\"%s\";"
+                          "filename=\"%s\"" % (k, filename))
+            params.append("Content-Type: %s\r\n" %
+                          guess_content_type(filename))
+            params.append(content)
         else:
-            body += "Content-Disposition: form-data; name=\"%s\"\r\n\r\n\
-                    %s" % (k, encode_str(v))
-    body += "--%s--\r\n" % boundary
-    return body, boundary
+            params.append("Content-Disposition: form-data; name=\"%s\"\r\n"
+                          % k)
+            params.append(encode_str(v))
+    params.append("--%s--\r\n" % boundary)
+    return "\r\n".join(params), boundary
 
 
 def http_post(url, **kw):
     """Send a HTTP Post request to the url and return a JSON object."""
     params = None
     boundary = None
-    if url.find("upload") >= 0:
+    if kw.get("method") and kw["method"].find("upload") >= 0:
         params, boundary = encode_multipart(**kw)
     else:
         params = encode_params(**kw)

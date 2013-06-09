@@ -45,9 +45,6 @@ client.set_access_token(access_token, expires_in)
 
 Now you can call Renren API using the API client.
 
-print client.photos.upload(upload=open("QB.jpg", "rb"))
-```
-
 ## How to call a particular API
 
 The APIs are listed at [Renren API Documentation]

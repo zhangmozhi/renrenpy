@@ -95,15 +95,18 @@ def http_post(url, **kw):
         req.add_header("Content-Type",
                        "multipart/form-data; boundary=%s" % boundary)
 
-    resp = urllib2.urlopen(req)
-    content = resp.read()
-    if resp.headers.get("Content-Encoding", "") == "gzip":
-        content = decompress_gzip(content)
-    result = json.loads(content)
-    if type(result) is not list and result.get("error_code"):
-        raise APIError(result.get("error_code", ""),
-                       result.get("error_msg", ""))
-    return result
+    try:
+        resp = urllib2.urlopen(req)
+        content = resp.read()
+        if resp.headers.get("Content-Encoding", "") == "gzip":
+            content = decompress_gzip(content)
+        result = json.loads(content)
+        if type(result) is not list and result.get("error_code"):
+            raise APIError(result.get("error_code", ""),
+                           result.get("error_msg", ""))
+        return result
+    except urllib2.HTTPError as e:
+        raise e
 
 
 class APIClient:

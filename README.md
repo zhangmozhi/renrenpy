@@ -36,7 +36,7 @@ token 。
 r = client.request_access_token(AUTHORIZATION_CODE)
 access_token = r["access_token"]  # access token
 expires_in = r["expires_in"]      # token expires time
-client.set_access_token(access_token, expires_in)
+client.set_access_token(access_token, expires_in + time.time())
 ```
 
 至此授权完毕。之后可以用 API client 来调用 API 。

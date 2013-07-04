@@ -3,10 +3,12 @@
 __author__ = "Mozhi Zhang (zhangmozhi@gmail.com)"
 
 import json
+import gzip
 import time
 import urllib
 import urllib2
 from StringIO import StringIO
+
 
 class APIError(StandardError):
     """API exception class."""
@@ -139,7 +141,7 @@ class APIClient:
             params["scope"] = " ".join(scope)
         if force_relogin:
             params["x_renew"] = "true"
-        return "%s%s?%s" % (APIClient.OAUTH_URI, "authorize", 
+        return "%s%s?%s" % (APIClient.OAUTH_URI, "authorize",
                             encode_params(**params))
 
     def request_access_token(self, code, redirect_uri=None):
@@ -158,13 +160,13 @@ class APIClient:
         The dict includes access_token, expires_in, refresh_token,
         and scope.
         """
-        return http_post("%s%s" %(APIClient.OAUTH_URI, "token"),
-                         grant_type="refresh_token", 
+        return http_post("%s%s" % (APIClient.OAUTH_URI, "token"),
+                         grant_type="refresh_token",
                          refresh_token=refresh_token,
                          client_id=self.app_key,
                          client_secret=self.app_secret)
 
-    def set_access_token(self, access_token, expires):
+    def set_access_token(self, access_token, expires=None):
         """Set access token for the API client."""
         self.access_token = str(access_token)
         self.expires = float(expires)
@@ -181,7 +183,7 @@ class APIWrapper:
 
     def __getattr__(self, attr):
         def request(**kw):
-            """Send a HTTP Post request to the API server with specified 
+            """Send a HTTP Post request to the API server with specified
             method.
             """
             params = dict(kw, access_token=self.client.access_token,

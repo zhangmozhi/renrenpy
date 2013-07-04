@@ -129,7 +129,6 @@ class APIClient:
         self.redirect_uri = redirect_uri
         self.response_type = response_type
         self.access_token = None
-        self.expires = 0.0
 
     def get_authorize_url(self, redirect_uri=None, scope=None,
                           force_relogin=False):
@@ -166,10 +165,9 @@ class APIClient:
                          client_id=self.app_key,
                          client_secret=self.app_secret)
 
-    def set_access_token(self, access_token, expires=None):
+    def set_access_token(self, access_token):
         """Set access token for the API client."""
         self.access_token = str(access_token)
-        self.expires = float(expires)
 
     def __getattr__(self, attr):
         return APIWrapper(self, attr)

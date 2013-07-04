@@ -3,6 +3,9 @@
 Renrenpy 是人人 API 的一个第三方 Python SDK 。使用 OAuth 2 验证并提供了 API
 的调用方法。
 
+更新至API 2.0。
+
+
 ## OAuth2.0
 
 首先在[人人开放平台](http://dev.renren.com)上申请开发者账户并新建应用。 SDK
@@ -20,12 +23,13 @@ REDIRECT_URI = "YOUR_REDIRECT_URI"  # redirect uri
 
 ```python
 client = APIClient(app_key=YOUR_APP_KEY, app_secret=YOUR_APP_SECRET,
-                   redirect_uri=YOUR_REDIRECT_URI)
+                   redirect_uri=YOUR_REDIRECT_URI) 
 url = client.get_authorize_url()    # redirect the user to `url'
 ```
 
-`get_authorize_url(scope=None, force_relogin=False)` 有两个额外参数。 scope
-是应用权限列表，默认为人人默认的应用权限。可以自行添加，如
+`get_authorize_url(scope=None, force_relogin=False, version=2)` 有三个额外参数。
+若将version设为1，则调用的是API 1.0，默认为使用API 2.0。
+scope 是应用权限列表，默认为人人默认的应用权限。可以自行添加，如
 `["status_update", "photo_upload", "read_user_status"]` 。 若将 `force_relogin` 设为 `True` ，则授权页会强制用户重新登录。
 
 授权完毕后，用户将会被转至 `YOUR_REDIRECT_URI` 。请求中有参数
@@ -35,14 +39,45 @@ token 。
 ```python
 r = client.request_access_token(AUTHORIZATION_CODE)
 access_token = r["access_token"]  # access token
+expires_in = r["expires_in"] # access token expires in time
+refresh_token = r["refresh_token"] # token used for refresh
 client.set_access_token(access_token)
 ```
 
 至此授权完毕。之后可以用 API client 来调用 API 。
 
-## 调用 API
+SDK使用的是Bearer Token，有效期有一个月，若需要更新access_token可以使用上述代码中的refresh_token。
 
-API 可在[人人 API 文档](http://wiki.dev.renren.com/wiki/API)中找到。 SDK 中的 APIClient 类对所有 API 提供了同名方法。通用参数(`v`, `access_token`, `call_id`)及 `method` 参数均由APIClient提供， `format` 参数默认为 `JSON` 。调用时只需提供其它必需参数。
+```python
+r = client.refresh_token(refresh_token)
+access_token = r["access_token"] # refreshed access token
+expires_in = r["expires_in"] # refreshed access token expires in time
+refresh_token = r["refresh_token"] # new refresh token
+client.set_access_token(access_token)
+```
+
+## 调用 API 2.0
+
+API 2.0 可在[人人 API 文档](http://wiki.dev.renren.com/wiki/API2)中找到。 SDK 中的 APIClient 类对所有 API 提供了方法。对于每个API，将"/"改为"."，省略v2即可调用。access_token参数由API Client提供。例如：
+
+```python
+print client.user.get(userId="262156164")
+print client.status.put(content="test") #Requires read_user_status,status_update scopes
+```
+
+SDK 也支持上传照片 (/v2/photo/upload)
+
+```python
+f = open("test.png", "rb")
+r = client.photo.upload(upload=f)
+f.close()  # you need to do this manually
+```
+
+注意 `upload` 参数必须是个 file-like 对象。
+
+## 调用 API 1.0
+
+API 1.0 可在[人人 API 文档](http://wiki.dev.renren.com/wiki/API)中找到。 SDK 中的 APIClient 类对所有 API 提供了同名方法。通用参数(`v`, `access_token`, `call_id`)及 `method` 参数均由APIClient提供， `format` 参数默认为 `JSON` 。调用时只需提供其它必需参数。
 
 例如：
 
@@ -94,8 +129,8 @@ client = APIClient(app_key=YOUR_APP_KEY, app_secret=YOUR_APP_SECRET,
 url = client.get_authorize_url()    # redirect the user to `url'
 ```
 
-There are two additional keyword parameters for `get_authorize_url()`, 
-`scope` and `force_relogin`.  `scope` is a list of additional permissions 
+There are three additional keyword parameters for `get_authorize_url()`, 
+`version`, `scope` and `force_relogin`.  `version` is set to 2 by default.  If you want to use the deprecated API 1.0, set `version` to 1.  `scope` is a list of additional permissions 
 for your application, e.g. `["status_update", "photo_upload",
 "read_user_status"]`.  When `force_relogin` is set to `True`, the 
 user is forced to relogin to authorize.
@@ -112,7 +147,16 @@ client.set_access_token(access_token)
 
 Now you can call Renren API using the API client.
 
-## How to call a particular API
+This SDK uses Bearer Token, which lasts for one month.  If the access token is expired, you can use the `refresh_token` to refresh the access token.
+
+```python
+r = client.refresh_token(refresh_token)
+access_token = r["access_token"] # refreshed access token
+expires_in = r["expires_in"] # refreshed access token expires in time
+refresh_token = r["refresh_token"] # new refresh token
+client.set_access_token(access_token)
+```
+## How to call a particular API (API 1.0)
 
 The APIs are listed at [Renren API Documentation]
 (http://wiki.dev.renren.com/wiki/API).
@@ -138,6 +182,27 @@ As for uploading pictures:
 ```python
 f = open("test.png", "rb")
 r = client.photos.upload(upload=f)
+f.close()  # you need to do this manually
+```
+
+Notice that the `upload` parameter only accepts file-like objects.
+
+## How to call a particular API (API 2.0)
+
+The APIs are listed at [Renren API Documentation]
+(http://wiki.dev.renren.com/wiki/API2).
+You can call an API using the APIClient's.  Remove "/v2/" and replace "/" with ".".  For example,
+
+```python
+print client.user.get(userId="262156164")
+print client.status.put(content="test") #Requires read_user_status,status_update scopes
+```
+
+As for uploading pictures:
+
+```python
+f = open("test.png", "rb")
+r = client.photo.upload(upload=f)
 f.close()  # you need to do this manually
 ```
 

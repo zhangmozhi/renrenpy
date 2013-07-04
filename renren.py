@@ -3,11 +3,18 @@
 __author__ = "Mozhi Zhang (zhangmozhi@gmail.com)"
 
 import json
-import gzip
 import time
 import urllib
 import urllib2
-from StringIO import StringIO
+
+
+#HTTP Method code
+GET = 0
+POST = 1
+UPLOAD = 2
+
+#Keyword for GET method
+GET_KEYWORDS = ["get", "list", "batch"]
 
 
 class APIError(StandardError):
@@ -34,14 +41,6 @@ def encode_params(**kw):
     """Return a URL-encoded string for a dictionary of paramteres."""
     return "&".join(["%s=%s" % (k, urllib.quote(encode_str(v)))
                      for k, v in kw.iteritems()])
-
-
-def decompress_gzip(compressed_str):
-    """Decompress a string compressed by Gzip."""
-    gzipper = gzip.GzipFile(fileobj=StringIO(compressed_str))
-    decompressed_str = gzipper.read()
-    gzipper.close()
-    return decompressed_str
 
 
 def guess_content_type(name):
@@ -82,26 +81,27 @@ def encode_multipart(**kw):
     return "\r\n".join(params), boundary
 
 
-def http_post(url, **kw):
-    """Send a HTTP Post request to the url and return a JSON object."""
+def http_call(url, http_method=POST, **kw):
+    """Send a HTTP request to the url and return a JSON object."""
     params = None
     boundary = None
-    if kw.get("method") and kw["method"].find("upload") >= 0:
+    if http_method == UPLOAD:
         params, boundary = encode_multipart(**kw)
     else:
         params = encode_params(**kw)
 
-    req = urllib2.Request(url, data=params)
-    req.add_header("Accept-Encoding", "gzip")
-    if boundary:
+    req = None
+    if http_method == GET:
+        req = urllib2.Request("%s?%s" % (url, params))
+    else:
+        req = urllib2.Request(url, data=params)
+    if http_method == UPLOAD:
         req.add_header("Content-Type",
                        "multipart/form-data; boundary=%s" % boundary)
 
     try:
         resp = urllib2.urlopen(req)
         content = resp.read()
-        if resp.headers.get("Content-Encoding", "") == "gzip":
-            content = decompress_gzip(content)
         result = json.loads(content)
         if type(result) is not list and result.get("error_code"):
             raise APIError(result.get("error_code", ""),
@@ -116,19 +116,14 @@ class APIClient:
     #Oauth URI
     OAUTH_URI = "https://graph.renren.com/oauth/"
 
-    #API Server URI
-    API_SERVER = "https://api.renren.com/restserver.do"
-
-    #API Version
-    API_VERSION = "1.0"
-
     def __init__(self, app_key, app_secret, redirect_uri,
-                 response_type="code"):
+                 response_type="code", version=2):
         self.app_key = str(app_key)
         self.app_secret = str(app_secret)
         self.redirect_uri = redirect_uri
         self.response_type = response_type
         self.access_token = None
+        self.version = version
 
     def get_authorize_url(self, redirect_uri=None, scope=None,
                           force_relogin=False):
@@ -149,7 +144,7 @@ class APIClient:
         and scope.
         """
         redirect = redirect_uri if redirect_uri else self.redirect_uri
-        return http_post("%s%s" % (APIClient.OAUTH_URI, "token"),
+        return http_call("%s%s" % (APIClient.OAUTH_URI, "token"), POST,
                          grant_type="authorization_code", code=code,
                          client_id=self.app_key, redirect_uri=redirect,
                          client_secret=self.app_secret)
@@ -159,7 +154,7 @@ class APIClient:
         The dict includes access_token, expires_in, refresh_token,
         and scope.
         """
-        return http_post("%s%s" % (APIClient.OAUTH_URI, "token"),
+        return http_call("%s%s" % (APIClient.OAUTH_URI, "token"), POST,
                          grant_type="refresh_token",
                          refresh_token=refresh_token,
                          client_id=self.app_key,
@@ -170,11 +165,19 @@ class APIClient:
         self.access_token = str(access_token)
 
     def __getattr__(self, attr):
+        if self.version == 2:
+            return APIWrapperV2(self, attr)
         return APIWrapper(self, attr)
 
 
 class APIWrapper:
-    """A wrapper class for APIs."""
+    """Wrapper Class for API 1.0."""
+    #API Server URI
+    API_SERVER = "https://api.renren.com/restserver.do"
+
+    #API Version
+    API_VERSION = "1.0"
+
     def __init__(self, client, name):
         self.client = client
         self.name = name
@@ -187,9 +190,36 @@ class APIWrapper:
             params = dict(kw, access_token=self.client.access_token,
                           method="%s.%s" % (self.name, attr),
                           call_id=str(int(time.time() * 1000)),
-                          v=APIClient.API_VERSION)
+                          v=APIWrapper.API_VERSION)
             if not params.get("format"):
                 params["format"] = "JSON"
-            return http_post(APIClient.API_SERVER, **params)
+            http_method = UPLOAD if attr == "upload" else POST
+            return http_call(APIWrapper.API_SERVER, http_method, **params)
 
         return request
+
+
+class APIWrapperV2():
+    """Wrapper class for API 2.0."""
+    #API Server URI
+    API_SERVER = "https://api.renren.com/v2"
+
+    def __init__(self, client, name):
+        self.client = client
+        self.name = name
+
+    def __getattr__(self, attr):
+        return APIWrapperV2(self.client, "%s/%s" % (self.name, attr))
+
+    def __call__(self, **kw):
+        """Send a HTTP Post request to the API server with specified
+        method.
+        """
+        params = dict(kw, access_token=self.client.access_token)
+        http_method = POST
+        if any(w in self.name for w in GET_KEYWORDS):
+            http_method = GET
+        elif "upload" in self.name:
+            http_method = UPLOAD
+        return http_call("%s/%s" % (APIWrapperV2.API_SERVER, self.name),
+                         http_method, **params)

@@ -5,6 +5,14 @@ Renrenpy 是人人 API 的一个第三方 Python SDK 。使用 OAuth 2 验证并
 
 更新至API 2.0。
 
+## 安装
+
+本SDK支持pip安装
+
+```
+pip install renrenpy
+```
+
 
 ## OAuth2.0
 
@@ -106,6 +114,14 @@ f.close()  # you need to do this manually
 A Python SDK for Renren open platform which provides OAuth 2 authentication and API wrapper. 
 
 Inspired from [Sinaweibopy](https://github.com/michaelliao/sinaweibopy).
+
+## Installation
+
+You can install the SDK via pip.
+
+```
+pip install renrenpy
+```
 
 ## OAuth2.0
 

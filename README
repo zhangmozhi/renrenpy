@@ -1,1 +1,7 @@
 This is a Python SDK for Renren API using OAuth 2 authentication.  It also provides API wrappers.
+
+You can find docs and source codes at the Github repository:
+
+https://github.com/rellik6/renrenpy
+
+Please feel free to report any bugs and make suggestions.

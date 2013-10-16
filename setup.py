@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name='renrenpy',
-    version='1.2',
+    version='1.3',
     description='Renren API and OAuth 2 Python SDK',
     long_description=open('README', 'r').read(),
     author='Mozhi Zhang',

@@ -65,7 +65,7 @@ def encode_multipart(**kw):
     params = []
     for k, v in kw.iteritems():
         params.append("--%s" % boundary)
-        if hasattr(v, "read"):
+        if hasattr(v, "read") and hasattr(v, "name"):
             content = v.read()
             filename = v.name
             params.append("Content-Disposition: form-data; name=\"%s\";"

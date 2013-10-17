@@ -54,20 +54,21 @@ def guess_content_type(name):
     elif name.endswith(".gif"):
         return "image/gif"
     elif name.endswith(".bmp"):
-        return "image.bmp"
+        return "image/bmp"
     return "image/jpg"
 
 
-def encode_multipart(**kw):
+def encode_multipart(filename=None, **kw):
     """Return a multipart/form-data body with a randomly generated boundary.
     """
     boundary = "----------%s" % hex(int(time.time() * 1000))
     params = []
     for k, v in kw.iteritems():
         params.append("--%s" % boundary)
-        if hasattr(v, "read") and hasattr(v, "name"):
+        if hasattr(v, "read"):
             content = v.read()
-            filename = v.name
+            if hasattr(v, "name") and filename is None:
+                filename = v.name
             params.append("Content-Disposition: form-data; name=\"%s\";"
                           "filename=\"%s\"" % (k, filename))
             params.append("Content-Type: %s\r\n" %

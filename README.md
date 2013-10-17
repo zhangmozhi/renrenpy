@@ -102,11 +102,11 @@ SDK 也支持上传照片 (photos.upload)
 
 ```python
 f = open("test.png", "rb")
-r = client.photos.upload(upload=f)
+r = client.photos.upload(upload=f, filename="test.png")
 f.close()  # you need to do this manually
 ```
 
-注意 `upload` 参数必须是个 file-like 对象。
+注意 `upload` 参数必须是个 file-like 对象。若`upload`参数没有`name`，则必须要提供一个拥有正确后缀的`filename`。
 
 
 # Renrenpy
@@ -218,8 +218,9 @@ As for uploading pictures:
 
 ```python
 f = open("test.png", "rb")
-r = client.photo.upload(upload=f)
+r = client.photo.upload(upload=f, filename="test.png")
 f.close()  # you need to do this manually
 ```
 
 Notice that the `upload` parameter only accepts file-like objects.
+If `upload` parameter does not have attribute `name`, then you have to supply `filename` with correct extension.

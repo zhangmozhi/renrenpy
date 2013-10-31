@@ -82,7 +82,7 @@ def encode_multipart(filename=None, **kw):
     return "\r\n".join(params), boundary
 
 
-def http_call(url, http_method=POST, **kw):
+def http_call(api_url, http_method=POST, **kw):
     """Send a HTTP request to the url and return a JSON object."""
     params = None
     boundary = None
@@ -93,9 +93,9 @@ def http_call(url, http_method=POST, **kw):
 
     req = None
     if http_method == GET:
-        req = urllib2.Request("%s?%s" % (url, params))
+        req = urllib2.Request("%s?%s" % (api_url, params))
     else:
-        req = urllib2.Request(url, data=params)
+        req = urllib2.Request(api_url, data=params)
     if http_method == UPLOAD:
         req.add_header("Content-Type",
                        "multipart/form-data; boundary=%s" % boundary)
